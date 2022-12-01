@@ -80,7 +80,4 @@ interface IReq {
   user: {
     uuid: string;
   };
-  file: {
-    exist: boolean;
-  };
 }
