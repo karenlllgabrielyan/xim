@@ -1,7 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { User_register_DTO } from './dto/User.register.dto';
-import { User_login_DTO } from './dto/User.login.dto';
+import { User_login_DTO, User_register_DTO } from './dto';
 import { AuthorizationService } from './authorization.service';
 
 

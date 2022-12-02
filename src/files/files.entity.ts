@@ -13,8 +13,8 @@ export class FilesEntity extends RawBaseEntity {
   @Column({ type: 'varchar', length: 128, nullable: false })
     mime_type: string;
 
-  @Column({ type: 'integer', nullable: false })
-    file_size: number;
+  @Column({ type: 'varchar', length: 128, nullable: false })
+    file_size: string;
 
   @Column({ type: 'varchar', length: 512, nullable: false })
     owner_uuid: string;
