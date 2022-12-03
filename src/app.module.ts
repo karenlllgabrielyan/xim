@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { UsersModule } from './users/users.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JWTGlobalModule } from './jwt.module';
 import { UsersEntity } from './users/users.entity';
 import { AuthorizationModule } from './authorization/authorization.module';
 import { FilesModule } from './files/files.module';
@@ -12,7 +11,6 @@ import { MulterModule } from '@nestjs/platform-express';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    JWTGlobalModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',

@@ -28,7 +28,6 @@ import {
 import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
-import { AuthGuard } from '../authorization/auth-guard.service';
 import { FilesService } from './files.service';
 import {
   File_getMany_ReqQuery_DTO,
@@ -37,10 +36,11 @@ import {
 } from './dto';
 import { createReadStream } from 'fs';
 import { join } from 'path';
+import { AccessTokenGuard } from '../authorization/guards';
 
 
 @ApiTags('Files')
-@UseGuards(AuthGuard)
+@UseGuards(AccessTokenGuard)
 @ApiBearerAuth()
 @Controller('file')
 export class FilesController {
@@ -68,10 +68,12 @@ export class FilesController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
     fileFilter: (req, file, cb) => {
-      if (fs.existsSync(`./files/${file.originalname}`)) {
+      fs.stat(`./files/${file.originalname}`, (err) => {
+        if (err) {
+          return cb(null, true);
+        }
         return cb(new HttpException(`File '${file.originalname}' already exist`, HttpStatus.NOT_ACCEPTABLE), false);
-      }
-      return cb(null, true);
+      });
     },
     storage: diskStorage({
       destination: './files',
@@ -80,7 +82,7 @@ export class FilesController {
       },
     }),
   }))
-  async uploadImage(@UploadedFile() file: Express.Multer.File, @Req() req: IReq) {
+  async uploadImage(@UploadedFile() file: Express.Multer.File, @Req() req) {
     return await this.files_svc.saveFileData({
       owner_uuid: req.user.uuid,
       filename: file.filename,
@@ -162,7 +164,7 @@ export class FilesController {
   @Put('update/:uuid')
   async updateFile(
     @UploadedFile() file: Express.Multer.File,
-    @Req() req: IReq,
+    @Req() req,
     @Param() param: File_ReqParam_DTO,
   ) {
     return this.files_svc.updateFile({
@@ -176,10 +178,4 @@ export class FilesController {
       },
     });
   }
-}
-
-interface IReq {
-  user: {
-    uuid: string;
-  };
 }

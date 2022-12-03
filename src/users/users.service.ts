@@ -1,11 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { User_register_DTO } from '../authorization/dto/User.register.dto';
+import { User_register_DTO } from '../authorization/dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UsersEntity } from './users.entity';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcryptjs';
-import { User_DTO } from './dto/User.dto';
 
 
 @Injectable()
@@ -14,16 +13,6 @@ export class UsersService {
     @InjectRepository(UsersEntity)
     private readonly userRepository: Repository<UsersEntity>,
   ) { }
-
-  async __transformToUserDTO(users: Array<UsersEntity>)
-    :Promise<Array<User_DTO>> {
-    return users.map(user => ({
-      uuid: user.uuid,
-      email: user.email,
-      name: user.name,
-      surname: user.surname,
-    }));
-  }
 
   // ----------------------------------------------------------------------------- REGISTER
   async createUser(args: User_register_DTO) {
@@ -42,17 +31,9 @@ export class UsersService {
     return 'Registered successfully';
   }
 
-
-  // ----------------------------------------------------------------------------- GET MY PROFILE
-  async getMyProfile(uuid: string)
-    :Promise<User_DTO> {
-    const user = await this.userRepository.findOne({ where: { uuid } });
-    return (await this.__transformToUserDTO([user]))[0];
-  }
-
   // ----------------------------------------------------------------------------- GET USER BY EMAIL
   async getByEmail(email: string) {
-    const user = this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: {
         email,
       },
@@ -62,6 +43,15 @@ export class UsersService {
       throw new HttpException('User with such email not found', HttpStatus.NOT_FOUND);
     }
     return user;
+  }
+
+  // ----------------------------------------------------------------------------- GET USER BY ID
+  async getById(uuid: string) {
+    return await this.userRepository.findOne({
+      where: {
+        uuid,
+      },
+    });
   }
 
   // --------------------------------------------------------------------------- IS UNIQUE
@@ -75,5 +65,26 @@ export class UsersService {
     if (user) {
       throw new HttpException('User with such email already exist', HttpStatus.NOT_ACCEPTABLE);
     }
+  }
+
+  // --------------------------------------------------------------------------- UPDATE REFRESH TOKEN
+  async __updateTokens(args: {
+    uuid: string;
+    refresh_token: string;
+    access_token: string;
+  }) {
+    const user = await this.userRepository.findOne({
+      where: {
+        uuid: args.uuid,
+      },
+    });
+
+    if (!user) {
+      throw new HttpException('User with such uuid not found', HttpStatus.NOT_FOUND);
+    }
+
+    user.access_token = args.access_token;
+    user.refresh_token = args.refresh_token;
+    await this.userRepository.save(user);
   }
 }

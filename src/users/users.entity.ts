@@ -15,4 +15,10 @@ export class UsersEntity extends RawBaseEntity {
 
   @Column({ type: 'varchar', length: 512, nullable: false })
     password: string;
+
+  @Column({ type: 'varchar', length: 512, nullable: true })
+    access_token: string;
+
+  @Column({ type: 'varchar', length: 512, nullable: true })
+    refresh_token: string;
 }

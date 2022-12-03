@@ -6,8 +6,6 @@ import { randomUUID } from 'crypto';
 import { File_DTO } from './dto';
 import { filesize } from 'filesize';
 import * as fs from 'fs';
-import { join } from 'path';
-import { createReadStream } from 'fs';
 
 
 @Injectable()
@@ -90,7 +88,9 @@ export class FilesService {
 
     await this.filesRepository.remove(file_data);
 
-    return `${file_data.name} has deleted`;
+    return {
+      message: `${file_data.name} has deleted`,
+    };
   }
 
   // --------------------------------------------------------------- UPDATE FILE BY UUID

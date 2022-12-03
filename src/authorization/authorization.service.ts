@@ -1,7 +1,6 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { User_register_DTO } from './dto/User.register.dto';
+import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { User_register_DTO, User_login_DTO } from './dto';
 import * as bcrypt from 'bcryptjs';
-import { User_login_DTO } from './dto/User.login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { User_DTO } from '../users/dto/User.dto';
 import { UsersService } from '../users/users.service';
@@ -23,7 +22,13 @@ export class AuthorizationService {
   // ----------------------------------------------------------------------------- LOGIN
   async login(args: User_login_DTO) {
     const user = await this.__validateUser(args);
-    return await this.__generateToken(user);
+    const tokens = await this.__generateTokens(user);
+    await this.__updateRefreshToken({
+      user_uuid: user.uuid,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+    });
+    return tokens ;
   }
 
   // --------------------------------------------------------------------------- VALIDATE USER
@@ -42,7 +47,7 @@ export class AuthorizationService {
   }
 
   // --------------------------------------------------------------------------- GENERATE TOKEN
-  private async __generateToken(user: User_DTO) {
+  private async __generateTokens(user: User_DTO) {
     const payload = {
       name: user.name,
       uuid: user.uuid,
@@ -50,7 +55,67 @@ export class AuthorizationService {
     };
 
     return {
-      token: this.jwt_svc.sign(payload),
+      access_token: await this.jwt_svc.signAsync(
+        payload,
+        {
+          secret: process.env.JWT_ACCESS_SECRET,
+          expiresIn: '10m',
+        },
+      ),
+      refresh_token: await this.jwt_svc.signAsync(
+        payload,
+        {
+          secret: process.env.JWT_REFRESH_SECRET,
+          expiresIn: '1d',
+        },
+      ),
     };
+  }
+
+  // --------------------------------------------------------------------------- NEW TOKEN
+  async newToken(args: { user_uuid: string; refresh_token: string }) {
+    const user = await this.user_svc.getById(args.user_uuid);
+
+    if (!user || !user.refresh_token) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const token_match = await bcrypt.compare(args.refresh_token, user.refresh_token);
+
+    if (!token_match) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const tokens = await this.__generateTokens(user);
+    await this.__updateRefreshToken({
+      user_uuid: args.user_uuid,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+    });
+    return tokens;
+  }
+
+  // --------------------------------------------------------------------------- UPDATE TOKEN
+  private async __updateRefreshToken(args: {
+    user_uuid: string;
+    refresh_token: string;
+    access_token: string;
+  }) {
+    const hashed_refresh = !args.refresh_token ? null : await bcrypt.hash(args.refresh_token, 5);
+    const hashed_access = !args.refresh_token ? null : await bcrypt.hash(args.access_token, 5);
+    await this.user_svc.__updateTokens({
+      uuid: args.user_uuid,
+      refresh_token: hashed_refresh,
+      access_token: hashed_access,
+    });
+  }
+
+  // --------------------------------------------------------------------------- LOGOUT
+  async logout(user_uuid: string) {
+    return await this.__updateRefreshToken({
+      user_uuid,
+      access_token: null,
+      refresh_token: null,
+    });
   }
 }
